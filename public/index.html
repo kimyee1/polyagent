@@ -90,7 +90,7 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 .syes{color:var(--lime);border-color:rgba(184,255,63,.25);background:rgba(184,255,63,.07);}
 .sno{color:var(--red);border-color:rgba(255,68,102,.25);background:rgba(255,68,102,.07);}
 
-.sig-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-bottom:12px;}
+.sig-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-bottom:12px;row-gap:8px;}
 .sm-l{font-size:.56rem;color:var(--tx2);font-family:'IBM Plex Mono',monospace;letter-spacing:.5px;margin-bottom:2px;}
 .sm-v{font-family:'IBM Plex Mono',monospace;font-size:.76rem;}
 .vl{color:var(--lime);} .va{color:var(--amber);} .vr{color:var(--red);}
@@ -485,7 +485,9 @@ function parseM(m) {
     volume:    m.volume || 0,
     liquidity: m.liquidity || 0,
     endDate:   m.endDate || '',
-    slug:      m.slug || ''
+    slug:      m.slug || '',
+    volume:    m.volume || m.volumeNum || 0,
+    liquidity: m.liquidity || m.liquidityNum || 0
   };
 }
 
@@ -588,6 +590,8 @@ function buildSignals(trades, markets) {
       usd:        usd,
       confidence: t.confidence || 'MED',
       reasoning:  t.reasoning  || '',
+      volume:     m.volume    || 0,
+      liquidity:  m.liquidity || 0,
       status:     'pending'
     });
   }
@@ -620,11 +624,19 @@ function renderSignals() {
     html += '<span class="sig-side ' + sideClass + '">' + sig.side + '</span>';
     html += '</div>';
     html += '<div class="sig-grid">';
-    html += '<div><div class="sm-l">ENTRY</div><div class="sm-v">' + (sig.ep * 100).toFixed(0) + 'c</div></div>';
+    var volFmt = sig.volume >= 1000000 ? (sig.volume/1000000).toFixed(1)+'M' : sig.volume >= 1000 ? (sig.volume/1000).toFixed(0)+'K' : (sig.volume||0);
+    var volColor = sig.volume >= 500000 ? 'vl' : sig.volume >= 100000 ? 'va' : 'vr';
+    var entryOk  = sig.ep >= 0.30 && sig.ep <= 0.70;
+    var edgeOk   = sig.edge >= 10;
+    var volOk    = sig.volume >= 500000;
+    var quality  = (entryOk && edgeOk && volOk) ? '★ GOOD SIGNAL' : (!entryOk) ? '⚠ PRICE TOO HIGH' : (!edgeOk) ? '⚠ LOW EDGE' : '⚠ LOW VOLUME';
+    var qColor   = (entryOk && edgeOk && volOk) ? 'vl' : 'va';
+    html += '<div><div class="sm-l">ENTRY</div><div class="sm-v ' + (entryOk?'vl':'vr') + '">' + (sig.ep * 100).toFixed(0) + 'c ' + (entryOk ? '✓' : '✗') + '</div></div>';
     html += '<div><div class="sm-l">FAIR VALUE</div><div class="sm-v vl">' + (sig.fv * 100).toFixed(0) + 'c</div></div>';
-    html += '<div><div class="sm-l">EDGE</div><div class="sm-v ' + edgeColor + '">+' + sig.edge + 'c</div></div>';
-    html += '<div><div class="sm-l">STAKE</div><div class="sm-v va">' + f$(sig.usd) + ' (' + sig.pct + '%)</div></div>';
+    html += '<div><div class="sm-l">EDGE</div><div class="sm-v ' + edgeColor + '">' + (sig.edge > 0 ? '+' : '') + sig.edge + 'c ' + (edgeOk ? '✓' : '✗') + '</div></div>';
+    html += '<div><div class="sm-l">VOLUME</div><div class="sm-v ' + volColor + '">$' + volFmt + ' ' + (volOk ? '✓' : '✗') + '</div></div>';
     html += '<div><div class="sm-l">CONF</div><div class="sm-v ' + confColor + '">' + sig.confidence + '</div></div>';
+    html += '<div style="grid-column:1/-1;margin-top:4px"><div class="sm-l">SIGNAL QUALITY</div><div class="sm-v ' + qColor + '" style="font-size:.8rem">' + quality + '</div></div>';
     html += '</div>';
     html += '<div class="sig-why">&#x1F4A1; ' + esc(sig.reasoning) + '</div>';
     html += '<div class="sig-btns">';

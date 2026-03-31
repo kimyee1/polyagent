@@ -478,16 +478,20 @@ function parseM(m) {
     var p = typeof m.outcomePrices === 'string' ? JSON.parse(m.outcomePrices) : m.outcomePrices;
     if (Array.isArray(p)) yp = parseFloat(p[0]) || 0.5;
   } catch(e) {}
+
+  // Build direct Polymarket URL from API slug field
+  var slug = m.slug || m.market_slug || '';
+  var directUrl = slug ? 'https://polymarket.com/event/' + slug : '';
+
   return {
-    question:  m.question || m.title || 'Unknown market',
-    yesPrice:  Math.min(0.97, Math.max(0.03, yp)),
-    noPrice:   1 - yp,
-    volume:    m.volume || 0,
-    liquidity: m.liquidity || 0,
-    endDate:   m.endDate || '',
-    slug:      m.slug || '',
-    volume:    m.volume || m.volumeNum || 0,
-    liquidity: m.liquidity || m.liquidityNum || 0
+    question:   m.question || m.title || 'Unknown market',
+    yesPrice:   Math.min(0.97, Math.max(0.03, yp)),
+    noPrice:    1 - yp,
+    volume:     m.volume || m.volumeNum || 0,
+    liquidity:  m.liquidity || m.liquidityNum || 0,
+    endDate:    m.endDate || '',
+    slug:       slug,
+    directUrl:  directUrl
   };
 }
 
@@ -592,6 +596,8 @@ function buildSignals(trades, markets) {
       reasoning:  t.reasoning  || '',
       volume:     m.volume    || 0,
       liquidity:  m.liquidity || 0,
+      directUrl:  m.directUrl || '',
+      conditionId: m.conditionId || '',
       status:     'pending'
     });
   }
@@ -666,14 +672,22 @@ function approveSignal(id) {
   if (!sig || sig.status !== 'pending') return;
   sig.status = 'approved';
 
-  // Always use Polymarket search - slugs are unreliable and cause 404s
-  var keywords = sig.question
-    .replace(/[^a-zA-Z0-9 ]/g, ' ')
-    .trim()
-    .split(/\s+/)
-    .slice(0, 6)
-    .join(' ');
-  var polyUrl = 'https://polymarket.com/markets?_q=' + encodeURIComponent(keywords);
+  // Use direct URL from API if available, otherwise smart search
+  var polyUrl;
+  if (sig.directUrl && sig.directUrl.length > 10) {
+    polyUrl = sig.directUrl;
+    log('BUY', 'Opening direct market URL...', 'tbuy');
+  } else {
+    // Build a very specific search query
+    var keywords = sig.question
+      .replace(/[^a-zA-Z0-9 ]/g, ' ')
+      .trim()
+      .split(/\s+/)
+      .slice(0, 7)
+      .join(' ');
+    polyUrl = 'https://polymarket.com/markets?_q=' + encodeURIComponent(keywords) + '&_s=volume';
+    log('BUY', 'No direct URL - opening search for: ' + keywords.slice(0,40), 'tbuy');
+  }
 
   S.positions.push({
     id:         sig.id,

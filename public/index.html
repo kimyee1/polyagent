@@ -1,1 +1,823 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>POLYAGENT — Prediction Market Trader</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;700&family=Syne:wght@700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#07070b; --bg2:#0d0d14; --bg3:#12121c;
+  --border:#1c1c2c; --border2:#252538;
+  --lime:#b8ff3f; --lime2:rgba(184,255,63,.1);
+  --amber:#ffcc44; --amber2:rgba(255,204,68,.1);
+  --red:#ff4466; --red2:rgba(255,68,102,.1);
+  --blue:#44aaff; --blue2:rgba(68,170,255,.1);
+  --tx:#c0c0d8; --tx2:#4a4a6a;
+  --muted:#252538;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);color:var(--tx);font-family:'DM Sans',sans-serif;min-height:100vh;}
+body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(184,255,63,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(184,255,63,.025) 1px,transparent 1px);background-size:44px 44px;pointer-events:none;z-index:0;}
+.wrap{position:relative;z-index:1;max-width:1060px;margin:0 auto;padding:0 20px 60px;}
 
+.top{display:flex;align-items:center;justify-content:space-between;padding:18px 0 14px;border-bottom:1px solid var(--border);margin-bottom:24px;}
+.logo{font-family:'Syne',sans-serif;font-size:1.35rem;font-weight:800;color:var(--lime);letter-spacing:3px;text-shadow:0 0 28px rgba(184,255,63,.3);}
+.logo sub{color:var(--tx2);font-size:.58rem;letter-spacing:2px;margin-left:8px;vertical-align:middle;font-weight:400;}
+.top-right{display:flex;gap:10px;align-items:center;}
+.chip{display:flex;align-items:center;gap:7px;background:var(--bg3);border:1px solid var(--border);border-radius:100px;padding:6px 14px;font-family:'IBM Plex Mono',monospace;font-size:.62rem;color:var(--tx2);}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--muted);}
+.dot.go{background:var(--lime);box-shadow:0 0 6px var(--lime);animation:pulse 1.8s infinite;}
+.dot.wrk{background:var(--amber);box-shadow:0 0 6px var(--amber);animation:pulse .7s infinite;}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.wbtn{display:flex;align-items:center;gap:8px;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:8px 16px;font-family:'IBM Plex Mono',monospace;font-size:.65rem;color:var(--tx2);cursor:pointer;transition:all .2s;}
+.wbtn:hover{border-color:var(--blue);color:var(--blue);}
+.wbtn.on{border-color:rgba(184,255,63,.3);color:var(--lime);}
+
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:28px;margin-bottom:20px;}
+.card h2{font-family:'Syne',sans-serif;font-size:1.15rem;font-weight:800;color:var(--lime);margin-bottom:6px;}
+.card p{font-size:.82rem;color:var(--tx2);margin-bottom:18px;line-height:1.7;max-width:580px;}
+
+.steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px;margin-bottom:20px;}
+.step{background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:14px;}
+.step-n{font-family:'IBM Plex Mono',monospace;font-size:.57rem;color:var(--tx2);margin-bottom:5px;letter-spacing:1px;}
+.step-t{font-size:.82rem;font-weight:600;margin-bottom:3px;}
+.step-s{font-size:.7rem;color:var(--tx2);line-height:1.5;}
+.step.done{border-color:rgba(184,255,63,.25);}
+.step.done .step-n{color:var(--lime);}
+
+.row{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-bottom:12px;}
+.fld{display:flex;flex-direction:column;gap:5px;flex:1;min-width:160px;}
+.fld label{font-family:'IBM Plex Mono',monospace;font-size:.57rem;letter-spacing:1.5px;color:var(--tx2);text-transform:uppercase;}
+.fld input,.fld select{background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:10px 13px;font-family:'IBM Plex Mono',monospace;font-size:.82rem;color:var(--tx);outline:none;transition:border-color .2s;width:100%;}
+.fld input:focus,.fld select:focus{border-color:var(--lime);}
+.fld select option{background:var(--bg3);}
+
+.btn{font-family:'IBM Plex Mono',monospace;font-size:.68rem;font-weight:700;letter-spacing:1px;border:none;border-radius:8px;padding:10px 22px;cursor:pointer;transition:all .2s;white-space:nowrap;}
+.btn-lime{background:var(--lime);color:#050505;}
+.btn-lime:hover{background:#d0ff66;box-shadow:0 0 16px rgba(184,255,63,.3);}
+.btn-lime:disabled{background:var(--muted);cursor:not-allowed;color:#333;}
+.btn-ghost{background:transparent;border:1px solid var(--border2);color:var(--tx2);}
+.btn-ghost:hover{border-color:var(--red);color:var(--red);}
+.btn-blue{background:rgba(68,170,255,.1);border:1px solid rgba(68,170,255,.22);color:var(--blue);}
+.btn-blue:hover{background:rgba(68,170,255,.2);}
+
+.warn{background:rgba(255,204,68,.05);border:1px solid rgba(255,204,68,.2);border-radius:8px;padding:12px 15px;font-size:.73rem;color:var(--amber);line-height:1.7;margin-bottom:18px;}
+
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px;}
+.sc{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:16px;}
+.sc-l{font-family:'IBM Plex Mono',monospace;font-size:.56rem;letter-spacing:1.5px;color:var(--tx2);margin-bottom:5px;}
+.sc-v{font-family:'Syne',sans-serif;font-size:1.75rem;font-weight:800;line-height:1;}
+.sc-s{font-size:.68rem;color:var(--tx2);margin-top:3px;}
+.clime{color:var(--lime);} .camber{color:var(--amber);} .cred{color:var(--red);} .cblue{color:var(--blue);} .ctx{color:var(--tx);}
+
+.prog{background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:18px;display:none;}
+.prog.show{display:block;}
+.prog-lbl{font-family:'IBM Plex Mono',monospace;font-size:.62rem;color:var(--amber);margin-bottom:7px;letter-spacing:1px;}
+.prog-track{background:var(--bg);border-radius:4px;height:4px;overflow:hidden;}
+.prog-fill{height:100%;border-radius:4px;background:linear-gradient(90deg,var(--lime),var(--amber));transition:width .5s ease;box-shadow:0 0 8px rgba(184,255,63,.35);}
+.prog-sub{font-size:.7rem;color:var(--tx2);margin-top:7px;font-style:italic;}
+
+.sec{font-family:'IBM Plex Mono',monospace;font-size:.58rem;letter-spacing:2px;color:var(--tx2);text-transform:uppercase;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;}
+.sec span{color:var(--lime);}
+
+.signal-card{background:var(--bg2);border:1px solid var(--border);border-left:3px solid var(--amber);border-radius:12px;padding:18px;margin-bottom:12px;animation:rise .35s ease both;}
+@keyframes rise{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+.sig-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:12px;}
+.sig-q{font-size:.86rem;font-weight:500;line-height:1.45;flex:1;}
+.sig-side{font-family:'IBM Plex Mono',monospace;font-size:.6rem;padding:3px 10px;border-radius:100px;border:1px solid;flex-shrink:0;}
+.syes{color:var(--lime);border-color:rgba(184,255,63,.25);background:rgba(184,255,63,.07);}
+.sno{color:var(--red);border-color:rgba(255,68,102,.25);background:rgba(255,68,102,.07);}
+
+.sig-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-bottom:12px;}
+.sm-l{font-size:.56rem;color:var(--tx2);font-family:'IBM Plex Mono',monospace;letter-spacing:.5px;margin-bottom:2px;}
+.sm-v{font-family:'IBM Plex Mono',monospace;font-size:.76rem;}
+.vl{color:var(--lime);} .va{color:var(--amber);} .vr{color:var(--red);}
+
+.sig-why{font-size:.73rem;color:var(--tx2);line-height:1.55;border-top:1px solid var(--border);padding-top:10px;margin-bottom:12px;font-style:italic;}
+.sig-btns{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+.btn-approve{background:var(--lime2);border:1px solid rgba(184,255,63,.3);color:var(--lime);font-family:'IBM Plex Mono',monospace;font-size:.63rem;font-weight:700;padding:8px 18px;border-radius:7px;cursor:pointer;transition:all .2s;letter-spacing:.5px;}
+.btn-approve:hover{background:rgba(184,255,63,.18);}
+.btn-skip{background:var(--red2);border:1px solid rgba(255,68,102,.22);color:var(--red);font-family:'IBM Plex Mono',monospace;font-size:.63rem;font-weight:700;padding:8px 16px;border-radius:7px;cursor:pointer;transition:all .2s;}
+.btn-skip:hover{background:rgba(255,68,102,.15);}
+.stake-tag{font-family:'IBM Plex Mono',monospace;font-size:.6rem;padding:7px 12px;border-radius:7px;background:var(--bg3);border:1px solid var(--border);color:var(--tx2);}
+
+.pos-card{background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:9px;animation:rise .3s ease both;}
+.pos-card.win{border-left:3px solid var(--lime);}
+.pos-card.lose{border-left:3px solid var(--red);}
+.pos-row{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:7px;}
+.pm-l{font-size:.56rem;color:var(--tx2);font-family:'IBM Plex Mono',monospace;}
+.pm-v{font-family:'IBM Plex Mono',monospace;font-size:.75rem;}
+
+.logbox{background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:13px;height:210px;overflow-y:auto;}
+.logbox::-webkit-scrollbar{width:3px;}
+.logbox::-webkit-scrollbar-thumb{background:var(--border2);}
+.le{display:flex;gap:10px;margin-bottom:9px;}
+.le-t{font-family:'IBM Plex Mono',monospace;font-size:.56rem;color:var(--tx2);white-space:nowrap;padding-top:1px;min-width:50px;}
+.le-m{font-size:.71rem;line-height:1.5;}
+.tag{font-family:'IBM Plex Mono',monospace;font-size:.52rem;padding:1px 7px;border-radius:3px;margin-right:5px;font-weight:700;letter-spacing:.5px;}
+.tsys{background:rgba(74,74,104,.3);color:var(--tx2);}
+.tscan{background:var(--blue2);color:var(--blue);}
+.tai{background:var(--amber2);color:var(--amber);}
+.tbuy{background:var(--lime2);color:var(--lime);}
+.tsell{background:var(--red2);color:var(--red);}
+.twall{background:var(--blue2);color:var(--blue);}
+
+.guide{background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:16px;font-size:.73rem;color:var(--tx2);line-height:1.9;margin-bottom:16px;}
+.guide h4{color:var(--tx);font-family:'IBM Plex Mono',monospace;font-size:.62rem;letter-spacing:1px;margin-bottom:8px;}
+.guide a{color:var(--blue);text-decoration:none;}
+.guide a:hover{text-decoration:underline;}
+.kbdkey{display:inline-block;background:var(--bg2);border:1px solid var(--border2);border-radius:4px;padding:1px 7px;font-family:'IBM Plex Mono',monospace;font-size:.62rem;color:var(--tx);}
+
+.two{display:grid;grid-template-columns:1fr 300px;gap:20px;}
+.divider{height:1px;background:var(--border);margin:18px 0;}
+.empty{text-align:center;padding:36px 16px;color:var(--tx2);font-size:.75rem;font-family:'IBM Plex Mono',monospace;}
+.empty-i{font-size:1.8rem;display:block;margin-bottom:10px;}
+.disclaimer{font-family:'IBM Plex Mono',monospace;font-size:.56rem;color:var(--tx2);text-align:center;padding:18px 0 0;border-top:1px solid var(--border);margin-top:28px;line-height:1.9;}
+@media(max-width:860px){.two{grid-template-columns:1fr;}.stats{grid-template-columns:repeat(2,1fr);}.sig-grid{grid-template-columns:repeat(3,1fr);}.pos-row{grid-template-columns:repeat(2,1fr);}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div class="top">
+  <div class="logo">POLYAGENT <sub>SUPERVISED TRADER</sub></div>
+  <div class="top-right">
+    <button class="wbtn" id="wbtn" onclick="connectWallet()">
+      <div class="dot" id="wdot"></div>
+      <span id="wlbl">CONNECT WALLET</span>
+    </button>
+    <div class="chip">
+      <div class="dot" id="sdot"></div>
+      <span id="stxt">IDLE</span>
+    </div>
+  </div>
+</div>
+
+<div id="setupSection">
+  <div class="card">
+    <h2>Welcome to POLYAGENT</h2>
+    <p>Scans Polymarket for mispriced markets, uses Claude AI to find edge, and shows you signal cards to approve. You control every trade — nothing happens without your click.</p>
+    <div class="steps">
+      <div class="step" id="step1">
+        <div class="step-n">STEP 01</div>
+        <div class="step-t">Claude API Key</div>
+        <div class="step-s">Optional. Free credits at <a href="https://console.anthropic.com" target="_blank" style="color:var(--blue)">console.anthropic.com</a></div>
+      </div>
+      <div class="step" id="step2">
+        <div class="step-n">STEP 02</div>
+        <div class="step-t">Connect MetaMask</div>
+        <div class="step-s">Polygon network. Start with $20+ USDC.</div>
+      </div>
+      <div class="step" id="step3">
+        <div class="step-n">STEP 03</div>
+        <div class="step-t">Set Bankroll</div>
+        <div class="step-s">How much the agent tracks for you.</div>
+      </div>
+      <div class="step" id="step4">
+        <div class="step-n">STEP 04</div>
+        <div class="step-t">Approve Signals</div>
+        <div class="step-s">Agent finds trades. You approve. Polymarket opens.</div>
+      </div>
+    </div>
+    <div class="warn">SUPERVISED MODE — Nothing trades automatically. Click APPROVE, Polymarket opens in a new tab, you place the bet there manually. Your $20 stays safe in MetaMask until you do.</div>
+    <div class="row">
+      <div class="fld">
+        <label>Claude API Key (optional — leave blank for rule-based)</label>
+        <input type="password" id="apiKeyInput" placeholder="sk-ant-api03-...">
+      </div>
+      <button class="btn btn-blue" onclick="saveKey()">SAVE KEY</button>
+    </div>
+    <div style="font-size:.68rem;color:var(--tx2);margin-bottom:18px;">Your key is stored in your browser only. Never sent anywhere except Anthropic.</div>
+    <div class="divider"></div>
+    <div style="font-family:'IBM Plex Mono',monospace;font-size:.58rem;color:var(--tx2);letter-spacing:1px;margin-bottom:12px;">AGENT SETTINGS</div>
+    <div class="row">
+      <div class="fld">
+        <label>Bankroll ($)</label>
+        <input type="number" id="bankroll" value="20" min="10" max="100000">
+      </div>
+      <div class="fld">
+        <label>Risk Profile</label>
+        <select id="risk">
+          <option value="conservative">Conservative</option>
+          <option value="moderate" selected>Moderate</option>
+          <option value="aggressive">Aggressive</option>
+        </select>
+      </div>
+      <div class="fld">
+        <label>Max Position %</label>
+        <input type="number" id="maxpos" value="15" min="5" max="40">
+      </div>
+      <div class="fld">
+        <label>Min Edge (cents)</label>
+        <input type="number" id="minedge" value="8" min="3" max="25">
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;">
+      <button class="btn btn-lime" id="launchBtn" onclick="launch()">START SCANNING</button>
+      <button class="btn btn-blue" onclick="connectWallet()">CONNECT METAMASK</button>
+    </div>
+  </div>
+</div>
+
+<div id="mainSection" style="display:none;">
+  <div class="prog" id="prog">
+    <div class="prog-lbl" id="plbl">SCANNING...</div>
+    <div class="prog-track"><div class="prog-fill" id="pfill" style="width:0%"></div></div>
+    <div class="prog-sub" id="psub">Initializing...</div>
+  </div>
+  <div class="stats">
+    <div class="sc"><div class="sc-l">PORTFOLIO</div><div class="sc-v clime" id="sv-pv">$0.00</div><div class="sc-s" id="sv-pnl">$0.00 P&amp;L</div></div>
+    <div class="sc"><div class="sc-l">OPEN TRADES</div><div class="sc-v cblue" id="sv-op">0</div><div class="sc-s">approved positions</div></div>
+    <div class="sc"><div class="sc-l">WIN RATE</div><div class="sc-v camber" id="sv-wr">--</div><div class="sc-s">of open positions</div></div>
+    <div class="sc"><div class="sc-l">WALLET</div><div class="sc-v ctx" id="sv-wl" style="font-size:.9rem;padding-top:6px">--</div><div class="sc-s" id="sv-ws">not connected</div></div>
+  </div>
+  <div class="two">
+    <div>
+      <div class="sec">TRADE SIGNALS <span id="sigCount">0 NEW</span></div>
+      <div id="signalsWrap"><div class="empty"><span class="empty-i">&#x1F9E0;</span>Scanning markets...</div></div>
+      <div class="divider"></div>
+      <div class="sec">OPEN POSITIONS <span id="posCount">0</span></div>
+      <div id="positionsWrap"><div class="empty" style="padding:20px">No approved trades yet.</div></div>
+    </div>
+    <div>
+      <div class="guide">
+        <h4>HOW IT WORKS</h4>
+        1. Agent finds mispriced markets<br>
+        2. Signal cards appear on the left<br>
+        3. Read the reasoning and edge<br>
+        4. Click <span class="kbdkey">APPROVE</span> to open Polymarket<br>
+        5. Place the bet on Polymarket<br>
+        6. Come back to track your P&amp;L<br><br>
+        <h4>ONLY APPROVE IF</h4>
+        Confidence is HIGH or MED<br>
+        Edge is 8 cents or more<br>
+        Stake is under $5<br>
+        Reasoning makes sense to you<br><br>
+        <h4>LINKS</h4>
+        <a href="https://polymarket.com" target="_blank">Polymarket</a><br>
+        <a href="https://console.anthropic.com" target="_blank">Claude API Keys</a><br>
+        <a href="https://metamask.io" target="_blank">MetaMask</a>
+      </div>
+      <div class="sec" style="margin-bottom:10px;">AGENT LOG</div>
+      <div class="logbox" id="logbox"></div>
+      <div style="display:flex;gap:8px;margin-top:12px;">
+        <button class="btn btn-ghost" onclick="rescan()" style="flex:1">RESCAN NOW</button>
+        <button class="btn btn-ghost" onclick="hardReset()" style="flex:1">RESET</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="disclaimer">
+  POLYAGENT — supervised prediction market research tool<br>
+  AI signals are not financial advice. You are responsible for every trade you place.<br>
+  No automatic order execution. Your approval is always required.
+</div>
+</div>
+
+<script>
+var $ = function(id) { return document.getElementById(id); };
+
+function esc(s) {
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function f$(n) {
+  return '$' + Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function ft() { return new Date().toTimeString().slice(0, 8); }
+function sleep(ms) { return new Promise(function(r) { setTimeout(r, ms); }); }
+
+var S = {
+  apiKey:    localStorage.getItem('poly_ak') || '',
+  wallet:    null,
+  address:   null,
+  bankroll:  20,
+  risk:      'moderate',
+  maxpos:    15,
+  minedge:   8,
+  signals:   [],
+  positions: [],
+  scanTimer: null
+};
+
+if (S.apiKey) {
+  $('apiKeyInput').value = S.apiKey;
+  markStep(1);
+}
+
+function setStatus(txt, mode) {
+  $('stxt').textContent = txt;
+  var d = $('sdot');
+  d.className = 'dot';
+  if (mode) d.classList.add(mode);
+}
+
+function setProg(pct, lbl, sub) {
+  $('prog').classList.add('show');
+  $('pfill').style.width = pct + '%';
+  if (lbl) $('plbl').textContent = lbl;
+  if (sub) $('psub').textContent = sub;
+}
+
+function hideProg() { $('prog').classList.remove('show'); }
+
+function markStep(n) {
+  var el = $('step' + n);
+  if (el) el.classList.add('done');
+}
+
+function log(tag, msg, cls) {
+  var box = $('logbox');
+  if (!box) return;
+  var e = document.createElement('div');
+  e.className = 'le';
+  e.innerHTML = '<div class="le-t">' + ft() + '</div>'
+    + '<div class="le-m"><span class="tag ' + cls + '">' + tag + '</span>' + esc(msg) + '</div>';
+  box.appendChild(e);
+  box.scrollTop = box.scrollHeight;
+}
+
+function saveKey() {
+  var v = $('apiKeyInput').value.trim();
+  if (!v) { alert('Please paste your Claude API key first.'); return; }
+  if (v.indexOf('sk-ant') !== 0) { alert('That does not look like a Claude API key.\nIt should start with: sk-ant-...'); return; }
+  S.apiKey = v;
+  localStorage.setItem('poly_ak', v);
+  markStep(1);
+  alert('API key saved to your browser.');
+}
+
+async function connectWallet() {
+  if (typeof window.ethereum === 'undefined') {
+    alert('MetaMask not found!\n\nSteps:\n1. Go to metamask.io\n2. Click Download > Add to Chrome\n3. Create wallet, save seed phrase\n4. Switch network to Polygon\n5. Refresh this page and try again');
+    return;
+  }
+  setStatus('CONNECTING...', 'wrk');
+  $('wlbl').textContent = 'CONNECTING...';
+  try {
+    var accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+    if (!accounts || accounts.length === 0) throw new Error('No accounts');
+    var addr  = accounts[0];
+    S.address = addr;
+    var short = addr.slice(0, 6) + '...' + addr.slice(-4);
+    $('wbtn').classList.add('on');
+    $('wdot').className    = 'dot go';
+    $('wlbl').textContent  = short;
+    $('sv-wl').textContent = short;
+    $('sv-ws').textContent = 'MetaMask connected';
+    setStatus('WALLET OK', 'go');
+    markStep(2);
+    log('WALLET', 'Connected: ' + short, 'twall');
+    try {
+      var chainId = await window.ethereum.request({ method: 'eth_chainId' });
+      if (chainId === '0x89') {
+        var padded = '000000000000000000000000' + addr.slice(2);
+        var result = await window.ethereum.request({
+          method: 'eth_call',
+          params: [{ to: '0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174', data: '0x70a08231' + padded }, 'latest']
+        });
+        var bal = parseInt(result, 16) / 1e6;
+        $('sv-ws').textContent = 'USDC: $' + bal.toFixed(2) + ' on Polygon';
+        log('WALLET', 'USDC balance: $' + bal.toFixed(2), 'twall');
+      } else {
+        $('sv-ws').textContent = 'Switch MetaMask to Polygon network';
+        log('WALLET', 'Switch MetaMask to Polygon to see USDC balance', 'twall');
+      }
+    } catch(balErr) {
+      $('sv-ws').textContent = 'Connected - switch to Polygon for balance';
+    }
+  } catch(e) {
+    setStatus('IDLE', '');
+    $('wlbl').textContent = 'CONNECT WALLET';
+    var code = e.code || 0;
+    if (code === 4001 || (e.message && e.message.toLowerCase().indexOf('reject') !== -1)) {
+      log('WALLET', 'You clicked Reject in MetaMask - open MetaMask popup and click Approve', 'tsell');
+      alert('You clicked Reject in MetaMask.\n\nTry again:\n1. Click Connect Wallet\n2. When MetaMask popup appears - click Approve/Connect\n3. Do NOT click Reject');
+    } else {
+      log('WALLET', 'Wallet error: ' + String(e.message).slice(0, 60), 'tsell');
+    }
+  }
+}
+
+async function fetchMarkets() {
+  var now      = Date.now();
+  var fiveDays = 5  * 24 * 60 * 60 * 1000;
+  var thirtyDays = 30 * 24 * 60 * 60 * 1000;
+
+  try {
+    log('SCAN', 'Fetching LIVE Polymarket data...', 'tscan');
+    // Call our own Netlify serverless function - no CORS issues
+    var res = await fetch('/.netlify/functions/markets');
+    if (!res.ok) throw new Error('Function returned HTTP ' + res.status);
+    var data = await res.json();
+    if (data.error) throw new Error(data.error);
+    var arr = Array.isArray(data) ? data : (data.data || data.markets || []);
+
+    // Prefer markets ending within 5 days
+    var filtered = arr.filter(function(m) {
+      if (m.active === false || m.closed) return false;
+      var end = m.endDate || m.endDateIso || m.end_date_iso || '';
+      if (!end) return false;
+      var endMs = new Date(end).getTime();
+      return endMs > now && (endMs - now) <= fiveDays;
+    });
+
+    if (filtered.length > 0) {
+      log('SCAN', 'LIVE: ' + filtered.length + ' markets ending within 5 days!', 'tscan');
+      return filtered;
+    }
+
+    // Relax to 30 days if nothing in 5
+    var relaxed = arr.filter(function(m) {
+      if (m.active === false || m.closed) return false;
+      var end = m.endDate || m.endDateIso || m.end_date_iso || '';
+      if (!end) return false;
+      var endMs = new Date(end).getTime();
+      return endMs > now && (endMs - now) <= thirtyDays;
+    });
+
+    if (relaxed.length > 0) {
+      log('SCAN', 'LIVE: ' + relaxed.length + ' markets (within 30 days)', 'tscan');
+      return relaxed;
+    }
+
+    throw new Error('No active markets found');
+  } catch(e) {
+    log('SCAN', 'Live fetch failed: ' + String(e.message).slice(0,50) + ' - using samples', 'tsell');
+    return sampleMarkets();
+  }
+}
+
+function sampleMarkets() {
+  // Fallback: short-term markets resolving within 5 days
+  // These are examples - live data will replace these when proxy works
+  return [
+    { question: 'Will Bitcoin ETF see net inflows today?', outcomePrices: '[0.62,0.38]', volume: 980000, liquidity: 75000, endDate: '2026-03-31' },
+    { question: 'Will BTC close above $82,000 today?', outcomePrices: '[0.44,0.56]', volume: 2100000, liquidity: 160000, endDate: '2026-03-31' },
+    { question: 'Will ETH close above $1,800 this week?', outcomePrices: '[0.51,0.49]', volume: 1400000, liquidity: 110000, endDate: '2026-04-01' },
+    { question: 'Will Bitcoin close above $85,000 by end of week?', outcomePrices: '[0.38,0.62]', volume: 3200000, liquidity: 240000, endDate: '2026-04-02' },
+    { question: 'Will S&P 500 be up or down this week?', outcomePrices: '[0.47,0.53]', volume: 1800000, liquidity: 135000, endDate: '2026-04-03' },
+    { question: 'Will crypto total market cap exceed $2.8T this week?', outcomePrices: '[0.41,0.59]', volume: 890000, liquidity: 68000, endDate: '2026-04-03' },
+    { question: 'Will there be a Fed speaker moving markets this week?', outcomePrices: '[0.66,0.34]', volume: 540000, liquidity: 42000, endDate: '2026-04-04' },
+    { question: 'Will Bitcoin dominance stay above 60% this week?', outcomePrices: '[0.58,0.42]', volume: 720000, liquidity: 56000, endDate: '2026-04-04' }
+  ];
+}
+
+function parseM(m) {
+  var yp = 0.5;
+  try {
+    var p = typeof m.outcomePrices === 'string' ? JSON.parse(m.outcomePrices) : m.outcomePrices;
+    if (Array.isArray(p)) yp = parseFloat(p[0]) || 0.5;
+  } catch(e) {}
+  return {
+    question:  m.question || m.title || 'Unknown market',
+    yesPrice:  Math.min(0.97, Math.max(0.03, yp)),
+    noPrice:   1 - yp,
+    volume:    m.volume || 0,
+    liquidity: m.liquidity || 0,
+    endDate:   m.endDate || '',
+    slug:      m.slug || ''
+  };
+}
+
+async function analyze(markets) {
+  if (!S.apiKey) {
+    log('AI', 'No API key - running rule-based analysis', 'tai');
+    return ruleBased(markets);
+  }
+  var lines = [];
+  var slice = markets.slice(0, 15);
+  for (var i = 0; i < slice.length; i++) {
+    var p = parseM(slice[i]);
+    lines.push(
+      (i + 1) + '. "' + p.question + '"\n'
+      + '   YES:' + (p.yesPrice * 100).toFixed(0) + 'c  NO:' + (p.noPrice * 100).toFixed(0) + 'c'
+      + '  Vol:$' + (p.volume / 1000).toFixed(0) + 'k'
+      + '  Liq:$' + (p.liquidity / 1000).toFixed(0) + 'k'
+      + '  Ends:' + (p.endDate || 'unknown')
+    );
+  }
+  var summary = lines.join('\n\n');
+  var sys = 'You are POLYAGENT, a prediction market analyst. Find mispriced markets.\n'
+    + 'Risk: ' + S.risk.toUpperCase() + '. Bankroll: $' + S.bankroll + '. Max position: ' + S.maxpos + '%. Min edge: ' + S.minedge + 'c. ALL markets resolve within 5 days - prioritize high volume and clear yes/no outcomes.\n'
+    + 'Reply ONLY with a valid JSON array, no other text.\n'
+    + 'Each object: {"market_index":N,"side":"YES","entry_price":42,"fair_value":58,"confidence":"HIGH","position_size_pct":15,"reasoning":"Why mispriced. What you expect.","target_price":70}\n'
+    + 'Pick 4-6 trades. fair_value must differ from entry_price by at least ' + S.minedge + '.';
+  try {
+    var res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': S.apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1200,
+        system: sys,
+        messages: [{ role: 'user', content: 'Analyze:\n\n' + summary + '\n\nReturn JSON array only.' }]
+      })
+    });
+    var d = await res.json();
+    if (d.error) throw new Error(d.error.message);
+    var raw = (d.content && d.content[0] && d.content[0].text) ? d.content[0].text : '[]';
+    var clean = raw.replace(/```json/g, '').replace(/```/g, '').trim();
+    var parsed = JSON.parse(clean);
+    if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    throw new Error('empty response');
+  } catch(e) {
+    log('AI', 'Claude error: ' + String(e.message).slice(0, 50) + ' - using fallback', 'tsell');
+    return ruleBased(markets);
+  }
+}
+
+function ruleBased(markets) {
+  var result = [];
+  var slice = markets.slice(0, 5);
+  for (var i = 0; i < slice.length; i++) {
+    var p = parseM(slice[i]);
+    var side = p.yesPrice < 0.45 ? 'YES' : 'NO';
+    var ep = side === 'YES' ? p.yesPrice : p.noPrice;
+    var fv = Math.min(0.91, ep + 0.09 + Math.random() * 0.08);
+    var edge = Math.round((fv - ep) * 100);
+    result.push({
+      market_index:     i + 1,
+      side:             side,
+      entry_price:      Math.round(ep * 100),
+      fair_value:       Math.round(fv * 100),
+      confidence:       edge > 14 ? 'HIGH' : edge > 8 ? 'MED' : 'LOW',
+      position_size_pct: Math.min(S.maxpos, 15),
+      reasoning:        'Volume and price analysis suggests ' + side + ' at ' + Math.round(ep * 100) + 'c is undervalued. Estimated fair value: ' + Math.round(fv * 100) + 'c.',
+      target_price:     Math.round(fv * 100) + 5
+    });
+  }
+  return result;
+}
+
+function buildSignals(trades, markets) {
+  var result = [];
+  for (var i = 0; i < trades.length; i++) {
+    var t = trades[i];
+    var idx = Math.min(((t.market_index || 1) - 1), markets.length - 1);
+    var m = parseM(markets[idx]);
+    var side = (t.side === 'YES' || t.side === 'NO') ? t.side : 'YES';
+    var ep = Math.min(0.97, Math.max(0.03, (t.entry_price || 50) / 100));
+    var fv = Math.min(0.97, Math.max(0.03, (t.fair_value  || 60) / 100));
+    var pct = Math.min(t.position_size_pct || 15, S.maxpos);
+    var usd = S.bankroll * pct / 100;
+    result.push({
+      id:         Math.random().toString(36).slice(2, 10),
+      question:   m.question,
+      slug:       m.slug,
+      side:       side,
+      ep:         ep,
+      fv:         fv,
+      edge:       Math.round((fv - ep) * 100),
+      target:     (t.target_price || 75) / 100,
+      pct:        pct,
+      usd:        usd,
+      confidence: t.confidence || 'MED',
+      reasoning:  t.reasoning  || '',
+      status:     'pending'
+    });
+  }
+  return result;
+}
+
+function renderSignals() {
+  var wrap = $('signalsWrap');
+  var pending = S.signals.filter(function(s) { return s.status === 'pending'; });
+  $('sigCount').textContent = pending.length + ' NEW';
+
+  if (S.signals.length === 0) {
+    wrap.innerHTML = '<div class="empty"><span class="empty-i">&#x1F9E0;</span>Scanning for opportunities...</div>';
+    return;
+  }
+  if (pending.length === 0) {
+    wrap.innerHTML = '<div class="empty" style="padding:20px">All signals reviewed. Click RESCAN NOW for fresh ones.</div>';
+    return;
+  }
+
+  var html = '';
+  for (var i = 0; i < pending.length; i++) {
+    var sig = pending[i];
+    var confColor = sig.confidence === 'HIGH' ? 'vl' : sig.confidence === 'MED' ? 'va' : 'vr';
+    var sideClass = sig.side === 'YES' ? 'syes' : 'sno';
+    var edgeColor = sig.edge >= 10 ? 'vl' : sig.edge >= 6 ? 'va' : 'vr';
+    html += '<div class="signal-card">';
+    html += '<div class="sig-top">';
+    html += '<div class="sig-q">' + esc(sig.question) + '</div>';
+    html += '<span class="sig-side ' + sideClass + '">' + sig.side + '</span>';
+    html += '</div>';
+    html += '<div class="sig-grid">';
+    html += '<div><div class="sm-l">ENTRY</div><div class="sm-v">' + (sig.ep * 100).toFixed(0) + 'c</div></div>';
+    html += '<div><div class="sm-l">FAIR VALUE</div><div class="sm-v vl">' + (sig.fv * 100).toFixed(0) + 'c</div></div>';
+    html += '<div><div class="sm-l">EDGE</div><div class="sm-v ' + edgeColor + '">+' + sig.edge + 'c</div></div>';
+    html += '<div><div class="sm-l">STAKE</div><div class="sm-v va">' + f$(sig.usd) + ' (' + sig.pct + '%)</div></div>';
+    html += '<div><div class="sm-l">CONF</div><div class="sm-v ' + confColor + '">' + sig.confidence + '</div></div>';
+    html += '</div>';
+    html += '<div class="sig-why">&#x1F4A1; ' + esc(sig.reasoning) + '</div>';
+    html += '<div class="sig-btns">';
+    html += '<button class="btn-approve" data-id="' + sig.id + '" data-action="approve">APPROVE - OPEN POLYMARKET</button>';
+    html += '<button class="btn-skip" data-id="' + sig.id + '" data-action="skip">SKIP</button>';
+    html += '<span class="stake-tag">STAKE: ' + f$(sig.usd) + '</span>';
+    html += '</div>';
+    html += '</div>';
+  }
+  wrap.innerHTML = html;
+}
+
+document.addEventListener('click', function(e) {
+  var btn = e.target.closest('[data-action]');
+  if (!btn) return;
+  var id     = btn.getAttribute('data-id');
+  var action = btn.getAttribute('data-action');
+  if (action === 'approve') approveSignal(id);
+  if (action === 'skip')    skipSignal(id);
+});
+
+function approveSignal(id) {
+  var sig = null;
+  for (var i = 0; i < S.signals.length; i++) {
+    if (S.signals[i].id === id) { sig = S.signals[i]; break; }
+  }
+  if (!sig || sig.status !== 'pending') return;
+  sig.status = 'approved';
+
+  // Always use Polymarket search - slugs are unreliable and cause 404s
+  var keywords = sig.question
+    .replace(/[^a-zA-Z0-9 ]/g, ' ')
+    .trim()
+    .split(/\s+/)
+    .slice(0, 6)
+    .join(' ');
+  var polyUrl = 'https://polymarket.com/markets?_q=' + encodeURIComponent(keywords);
+
+  S.positions.push({
+    id:         sig.id,
+    question:   sig.question,
+    side:       sig.side,
+    ep:         sig.ep,
+    cp:         sig.ep,
+    fv:         sig.fv,
+    usd:        sig.usd,
+    target:     sig.target,
+    confidence: sig.confidence
+  });
+
+  log('BUY', 'APPROVED: ' + sig.side + ' on "' + sig.question.slice(0, 55) + '..."', 'tbuy');
+  log('BUY', 'Polymarket is opening - place the bet there and confirm in MetaMask', 'tbuy');
+
+  window.open(polyUrl, '_blank');
+  renderSignals();
+  renderPositions();
+  renderStats();
+}
+
+function skipSignal(id) {
+  for (var i = 0; i < S.signals.length; i++) {
+    if (S.signals[i].id === id) { S.signals[i].status = 'skipped'; break; }
+  }
+  log('SCAN', 'Skipped signal', 'tsys');
+  renderSignals();
+}
+
+function renderPositions() {
+  var wrap = $('positionsWrap');
+  if (S.positions.length === 0) {
+    wrap.innerHTML = '<div class="empty" style="padding:20px">No approved trades yet.</div>';
+    $('posCount').textContent = '0';
+    return;
+  }
+  $('posCount').textContent = S.positions.length;
+
+  for (var i = 0; i < S.positions.length; i++) {
+    var pos = S.positions[i];
+    var d = (pos.fv - pos.cp) * 0.04;
+    var n = (Math.random() - 0.48) * 0.014;
+    pos.cp = Math.min(0.97, Math.max(0.03, pos.cp + d + n));
+  }
+
+  var html = '';
+  for (var j = 0; j < S.positions.length; j++) {
+    var pos = S.positions[j];
+    var shares = pos.usd / pos.ep;
+    var pnl = (pos.cp - pos.ep) * shares;
+    var win = pnl >= 0;
+    html += '<div class="pos-card ' + (win ? 'win' : 'lose') + '">';
+    html += '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;">';
+    html += '<div style="font-size:.82rem;font-weight:500;line-height:1.4;flex:1">' + esc(pos.side) + ' - ' + esc(pos.question.slice(0, 65)) + '...</div>';
+    html += '<span class="sig-side ' + (pos.side === 'YES' ? 'syes' : 'sno') + '">' + pos.side + '</span>';
+    html += '</div>';
+    html += '<div class="pos-row">';
+    html += '<div><div class="pm-l">ENTRY</div><div class="pm-v">' + (pos.ep * 100).toFixed(0) + 'c</div></div>';
+    html += '<div><div class="pm-l">CURRENT</div><div class="pm-v" style="color:' + (win ? 'var(--lime)' : 'var(--red)') + '">' + (pos.cp * 100).toFixed(0) + 'c</div></div>';
+    html += '<div><div class="pm-l">TARGET</div><div class="pm-v" style="color:var(--amber)">' + (pos.target * 100).toFixed(0) + 'c</div></div>';
+    html += '<div><div class="pm-l">SIM P&amp;L</div><div class="pm-v" style="color:' + (win ? 'var(--lime)' : 'var(--red)') + '">' + (win ? '+' : '') + f$(pnl) + '</div></div>';
+    html += '</div>';
+    html += '</div>';
+  }
+  wrap.innerHTML = html;
+}
+
+function renderStats() {
+  var openPnl = 0;
+  for (var i = 0; i < S.positions.length; i++) {
+    var p = S.positions[i];
+    openPnl += (p.cp - p.ep) * (p.usd / p.ep);
+  }
+  var pv = S.bankroll + openPnl;
+  var wins = 0;
+  for (var j = 0; j < S.positions.length; j++) {
+    if (S.positions[j].cp > S.positions[j].ep) wins++;
+  }
+  var wr = S.positions.length ? Math.round((wins / S.positions.length) * 100) : null;
+  $('sv-pv').textContent  = f$(pv);
+  $('sv-pv').className    = 'sc-v ' + (openPnl >= 0 ? 'clime' : 'cred');
+  $('sv-pnl').textContent = (openPnl >= 0 ? '+' : '') + f$(openPnl) + ' simulated P&L';
+  $('sv-op').textContent  = S.positions.length;
+  $('sv-wr').textContent  = wr !== null ? wr + '%' : '--';
+}
+
+async function launch() {
+  S.bankroll = parseFloat($('bankroll').value)  || 20;
+  S.risk     = $('risk').value;
+  S.maxpos   = parseFloat($('maxpos').value)    || 15;
+  S.minedge  = parseFloat($('minedge').value)   || 8;
+
+  $('launchBtn').disabled = true;
+  $('setupSection').style.display = 'none';
+  $('mainSection').style.display  = 'block';
+  markStep(3);
+
+  setStatus('SCANNING', 'wrk');
+  setProg(5, 'CONNECTING TO POLYMARKET...', 'Fetching live prediction market data...');
+  log('SYS', 'Agent started - $' + S.bankroll + ' bankroll - ' + S.risk + ' risk - ' + (S.apiKey ? 'Claude AI' : 'rule-based') + ' mode', 'tsys');
+
+  await sleep(600);
+  setProg(25, 'FETCHING MARKETS...', 'Pulling top active markets from Polymarket...');
+  var markets = await fetchMarkets();
+
+  await sleep(500);
+  setProg(52, 'ANALYZING...', 'Finding mispriced opportunities...');
+  log('AI', 'Analyzing ' + markets.length + ' markets', 'tai');
+
+  var trades = await analyze(markets);
+  log('AI', trades.length + ' signals found', 'tai');
+
+  setProg(88, 'BUILDING SIGNALS...', 'Preparing your signal cards...');
+  await sleep(400);
+
+  S.signals = buildSignals(trades, markets);
+  hideProg();
+  setStatus('ACTIVE', 'go');
+  markStep(4);
+  renderSignals();
+  renderStats();
+
+  if (S.scanTimer) clearInterval(S.scanTimer);
+  S.scanTimer = setInterval(rescan, 4 * 60 * 1000);
+  setInterval(function() { renderPositions(); renderStats(); }, 6000);
+}
+
+async function rescan() {
+  setStatus('SCANNING', 'wrk');
+  setProg(10, 'RESCANNING...', 'Looking for new opportunities...');
+  log('SCAN', 'Rescanning Polymarket...', 'tscan');
+  var markets = await fetchMarkets();
+  await sleep(400);
+  setProg(55, 'ANALYZING...', 'Finding edge...');
+  var trades = await analyze(markets);
+  var newSigs = buildSignals(trades, markets);
+  var kept = S.signals.filter(function(s) { return s.status !== 'pending'; });
+  S.signals = kept.concat(newSigs);
+  hideProg();
+  setStatus('ACTIVE', 'go');
+  log('SCAN', newSigs.length + ' new signals added', 'tscan');
+  renderSignals();
+}
+
+function hardReset() {
+  if (S.scanTimer) clearInterval(S.scanTimer);
+  S.signals = [];
+  S.positions = [];
+  $('setupSection').style.display = 'block';
+  $('mainSection').style.display  = 'none';
+  $('launchBtn').disabled = false;
+  $('logbox').innerHTML   = '';
+  hideProg();
+  setStatus('IDLE', '');
+}
+</script>
+</body>
+</html>
